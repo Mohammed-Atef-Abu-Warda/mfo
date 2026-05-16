@@ -1,34 +1,37 @@
 <?php
 
 namespace App\Http\Controllers;
+
 use App\Services\PriceService;
-use Illuminate\Http\Request;
+use App\Models\Signal;
+use App\Models\News;
 
 class DashboardController extends Controller
 {
+    protected $priceService;
 
-public function testDiscord() {
-    Http::post(env('DISCORD_WEBHOOK_URL'), [
-        "content" => "🚀 تم تفعيل رادار الذهب بنجاح! الروبوت الآن متصل بالقناة."
-    ]);
-}
-
-    public function index(PriceService $priceService)
+    public function __construct(PriceService $priceService)
     {
-        $techData = $priceService->getTechnicalAnalysis();
-        $news = \App\Models\News::latest()->take(5)->get();
-        
-        // جلب كل الإشارات للجدول
-        $signals = \App\Models\Signal::latest()->take(10)->get();
-        
-        // جلب آخر إشارة واحدة فقط للمبة التنبيه
-        $latest_signal = \App\Models\Signal::latest()->first();
+        $this->priceService = $priceService;
+    }
+
+    public function index()
+    {
+        // 1. جلب بيانات الذهب العالمي الجديد XAU/USD
+        $priceData = $this->priceService->getLatestGoldData();
+
+        // 2. جلب آخر إشارة تم رصدها من نظام القناص
+        $latestSignal = Signal::where('pair', 'XAU/USD')
+                              ->latest()
+                              ->first();
+
+        // 3. جلب الأخبار الاقتصادية المؤثرة على الذهب والدولار
+        $newsData = News::latest()->take(5)->get();
 
         return view('dashboard', [
-            'price' => $techData,
-            'news' => $news,
-            'signals' => $signals,
-            'latest_signal' => $latest_signal // أضفنا هذا السطر
+            'price' => $priceData,
+            'latest_signal' => $latestSignal,
+            'news' => $newsData
         ]);
     }
 }
